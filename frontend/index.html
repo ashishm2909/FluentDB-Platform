@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluentDB - AI SQL Agent</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=2">
+</head>
+<body>
+    <div class="background-effects">
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Sidebar / Setup -->
+        <aside class="sidebar glass-panel">
+            <div class="brand">
+                <div class="logo-icon">✨</div>
+                <h1>FluentDB</h1>
+            </div>
+            
+            <p class="subtitle">The AI-powered natural language database agent.</p>
+
+            <div class="setup-section">
+                <!-- Navigation -->
+                <a href="metrics.html" class="btn-primary" style="text-align: center; text-decoration: none; display: block; margin-bottom: 1rem;">📊 View Detailed Metrics</a>
+                
+                <div class="step">
+                    <div class="step-header">
+                        <span class="step-num">1</span>
+                        <h3>Upload Database</h3>
+                    </div>
+                    <p class="help-text">Select an SQLite (.db) file.</p>
+                    <div class="upload-wrapper" style="flex-direction: column; align-items: stretch; gap: 0.5rem; background: var(--panel-bg); padding: 1rem; border-radius: 8px; border: 1px solid var(--panel-border);">
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <input type="file" id="db-file" accept=".db,.sqlite,.sqlite3" class="hidden-input">
+                            <label for="db-file" class="file-label" style="margin:0;">Choose File</label>
+                            <span id="selected-filename" style="font-size: 0.85rem; color: #a5b4fc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;">No file selected</span>
+                            <button id="upload-btn" class="btn-primary" style="margin-left: auto;">Upload</button>
+                        </div>
+                        <div id="progress-container" class="hidden" style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; margin-top: 0.5rem;">
+                            <div id="progress-bar" style="width: 0%; height: 100%; background: #10b981; transition: width 0.1s linear;"></div>
+                        </div>
+                    </div>
+                    <p id="upload-status" class="status-msg"></p>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="step">
+                    <div class="step-header">
+                        <span class="step-num">2</span>
+                        <h3>Select Database</h3>
+                    </div>
+                    <p class="help-text">Choose the target dataset for your questions.</p>
+                    <div class="db-selector-wrapper">
+                        <select id="db-select" class="modern-select">
+                            <option value="">-- No databases available --</option>
+                        </select>
+                        <button id="refresh-dbs-btn" class="icon-btn" title="Refresh">🔄</button>
+                        <button id="delete-db-btn" class="icon-btn" title="Delete Selected Database">🗑️</button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <div class="query-panel glass-panel">
+                <h2>Ask anything about your data</h2>
+                <div class="search-box">
+                    <div class="search-icon">🔍</div>
+                    <input type="text" id="query-input" placeholder="e.g. Find the total revenue from last month...">
+                    <button id="submit-btn" class="btn-glow">Run Query</button>
+                </div>
+                <p id="error-message" class="error-msg hidden"></p>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loading" class="hidden">
+                <div class="modern-spinner">
+                    <div class="spinner-ring"></div>
+                </div>
+                <p class="loading-text">Analyzing schema and generating SQL...</p>
+            </div>
+
+            <!-- Metrics Dashboard -->
+            <div id="metrics-dashboard" class="metrics-grid hidden fade-in">
+                <div class="metric-card">
+                    <span class="metric-icon">⚡</span>
+                    <div class="metric-info">
+                        <span class="metric-label">AI Inference</span>
+                        <span class="metric-value" id="val-ai-latency">0ms</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-icon">🗄️</span>
+                    <div class="metric-info">
+                        <span class="metric-label">DB Execution</span>
+                        <span class="metric-value" id="val-db-latency">0ms</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-icon">🧠</span>
+                    <div class="metric-info">
+                        <span class="metric-label">Token Usage</span>
+                        <span class="metric-value" id="val-tokens">0 / 0</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-icon">📈</span>
+                    <div class="metric-info">
+                        <span class="metric-label">Query Complexity</span>
+                        <span class="metric-value" id="val-complexity">Low</span>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-icon">💰</span>
+                    <div class="metric-info">
+                        <span class="metric-label">Source & Cost</span>
+                        <span class="metric-value" id="val-cost">LLM ($0.00)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Area -->
+            <div id="results-area" class="results-layout hidden">
+                <!-- BULLETPROOF SQL DISPLAY -->
+                <div class="sql-card glass-panel fade-in" id="sql-card-container">
+                    <div class="card-header">
+                        <span class="card-title">Generated SQL</span>
+                    </div>
+                    <textarea id="sql-code-box" readonly style="width: 100%; height: 120px; padding: 15px; font-family: monospace; font-size: 15px; background: #000000; color: #00ff00; border: none; outline: none; border-radius: 0 0 16px 16px; resize: vertical; margin-bottom: 0; box-sizing: border-box;"></textarea>
+                </div>
+
+                <!-- Natural Language Insights -->
+                <div id="insights-card" class="glass-panel fade-in hidden" style="background: rgba(139, 92, 246, 0.1); border-color: rgba(139, 92, 246, 0.3);">
+                    <div class="card-header">
+                        <span class="card-title">💡 AI Insight</span>
+                    </div>
+                    <div style="padding: 1.5rem;">
+                        <p id="insight-text" style="margin:0; font-size: 1.1rem; color: #e2e8f0;"></p>
+                    </div>
+                </div>
+
+                <!-- Auto Chart -->
+                <div id="chart-card" class="glass-panel fade-in hidden">
+                    <div class="card-header">
+                        <span class="card-title">📊 Auto Visualization</span>
+                    </div>
+                    <div style="padding: 1.5rem; height: 300px;">
+                        <canvas id="autoChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="data-card glass-panel fade-in" id="data-display">
+                    <div class="card-header" style="display: flex; justify-content: space-between;">
+                        <span class="card-title" id="results-title">Query Results</span>
+                        <button id="export-csv-btn" class="icon-btn" style="font-size:0.8rem; padding:0.3rem 0.8rem;">📥 Export CSV</button>
+                    </div>
+                    <div class="table-container">
+                        <table>
+                            <thead id="table-head"></thead>
+                            <tbody id="table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Chart.js for Data Visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

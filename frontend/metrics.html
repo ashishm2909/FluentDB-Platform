@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detailed Metrics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .metrics-container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        .back-link { display: inline-block; margin-bottom: 2rem; color: var(--accent-primary); text-decoration: none; font-weight: 600; }
+        .back-link:hover { color: var(--accent-hover); }
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 3rem; }
+        .summary-card { background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px; padding: 1.5rem; text-align: center; }
+        .summary-value { font-size: 2.5rem; font-weight: 700; margin-top: 0.5rem; color: var(--accent-primary); }
+    </style>
+</head>
+<body>
+    <div class="background-effects">
+        <div class="glow-orb orb-1"></div>
+        <div class="glow-orb orb-2"></div>
+    </div>
+
+    <div class="metrics-container">
+        <a href="index.html" class="back-link">← Back to Query</a>
+        <h1 style="margin-top: 0;">Detailed Performance Metrics</h1>
+
+        <div class="summary-grid">
+            <div class="summary-card glass-panel">
+                <div class="metric-label">Total Queries Run</div>
+                <div class="summary-value" id="total-queries">0</div>
+            </div>
+            <div class="summary-card glass-panel">
+                <div class="metric-label">Avg AI Latency</div>
+                <div class="summary-value" id="avg-ai">0ms</div>
+            </div>
+            <div class="summary-card glass-panel">
+                <div class="metric-label">Total Cost</div>
+                <div class="summary-value" id="total-cost">$0.00</div>
+            </div>
+            <div class="summary-card glass-panel" style="border-color: var(--success);">
+                <div class="metric-label" style="color: var(--success);">Cache Hits (Saved Cost)</div>
+                <div class="summary-value" id="cache-saved" style="color: var(--success);">0</div>
+            </div>
+        </div>
+
+        <div class="data-card glass-panel fade-in">
+            <div class="card-header">
+                <span class="card-title">Query History Log</span>
+            </div>
+            <div class="table-container">
+                <table style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Time</th>
+                            <th>Database</th>
+                            <th>Query</th>
+                            <th>SQL</th>
+                            <th>Source</th>
+                            <th>Cost</th>
+                            <th>Tokens</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-body">
+                        <!-- Logs injected here -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="pagination-controls" style="display: flex; justify-content: center; align-items: center; gap: 1rem; padding: 1rem; background: var(--panel-bg); border-top: 1px solid var(--panel-border); border-radius: 0 0 12px 12px;">
+                <button id="prev-btn" class="icon-btn" style="padding: 0.5rem 1rem;">Previous</button>
+                <span id="page-indicator" style="font-size: 0.9rem; color: var(--accent-primary); font-weight: 600;">Page 1</span>
+                <button id="next-btn" class="icon-btn" style="padding: 0.5rem 1rem;">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="metrics.js"></script>
+</body>
+</html>
