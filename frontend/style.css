@@ -295,9 +295,14 @@ body {
     transition: all 0.2s;
 }
 
-.icon-btn:hover {
+.icon-btn:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.15);
     transform: scale(1.15);
+}
+
+.icon-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
 }
 
 .status-msg {

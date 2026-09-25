@@ -278,6 +278,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // HEALING LOGIC
             if (!execRes.ok || execData.result.error) {
                 const errorMsg = execData.error || execData.result.error;
+                
+                // DO NOT auto-heal if the table is missing, otherwise the LLM will hallucinate a wrong table
+                if (errorMsg.toLowerCase().includes("no such table")) {
+                    throw new Error(errorMsg);
+                }
+                
                 console.log("SQL Failed. Attempting Auto-Heal...", errorMsg);
                 
                 const currentApiKey = localStorage.getItem('groqApiKey') || '';
@@ -391,6 +397,8 @@ document.addEventListener('DOMContentLoaded', () => {
         errorMessage.classList.remove('hidden');
     }
 
+    let originalRowsData = [];
+
     function renderTable(columns, rows, opType) {
         tableHead.innerHTML = ''; tableBody.innerHTML = '';
         currentRenderedRowCount = 0;
@@ -410,9 +418,27 @@ document.addEventListener('DOMContentLoaded', () => {
         tableHead.appendChild(headerRow);
 
         currentColumns = columns;
+        originalRowsData = rows;
         totalRowsToRender = rows;
         
         renderMoreRows(100);
+    }
+
+    const resultsSearchInput = document.getElementById('results-search-input');
+    if (resultsSearchInput) {
+        resultsSearchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            if (!term) {
+                totalRowsToRender = originalRowsData;
+            } else {
+                totalRowsToRender = originalRowsData.filter(row => 
+                    row.some(cellValue => cellValue !== null && String(cellValue).toLowerCase().includes(term))
+                );
+            }
+            tableBody.innerHTML = '';
+            currentRenderedRowCount = 0;
+            renderMoreRows(100);
+        });
     }
 
     function renderMoreRows(count) {
@@ -504,4 +530,100 @@ document.addEventListener('DOMContentLoaded', () => {
 
     submitBtn.addEventListener('click', handleQuery);
     queryInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleQuery(); });
+
+    // Metrics Modal Logic
+    const metricsModal = document.getElementById('metrics-modal');
+    const viewMetricsBtn = document.getElementById('view-metrics-btn');
+    const closeMetricsBtn = document.getElementById('close-metrics-btn');
+    
+    if (viewMetricsBtn && metricsModal && closeMetricsBtn) {
+        closeMetricsBtn.addEventListener('click', () => {
+            metricsModal.classList.add('hidden');
+        });
+        
+        viewMetricsBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            metricsModal.classList.remove('hidden');
+            
+            try {
+                const response = await fetch(`${API_BASE}/logs`);
+                const data = await response.json();
+                
+                if (data.logs) {
+                    const logs = data.logs;
+                    
+                    document.getElementById('metrics-total-queries').textContent = logs.length;
+                    
+                    let totalAi = 0, totalDb = 0, totalTokens = 0, totalCost = 0.0, cacheHits = 0;
+                    logs.forEach(log => {
+                        totalAi += log.ai_latency || 0;
+                        totalDb += log.db_latency || 0;
+                        totalTokens += (log.prompt_tokens || 0) + (log.completion_tokens || 0);
+                        totalCost += log.cost || 0.0;
+                        if (log.source === 'CACHE') cacheHits++;
+                    });
+                    
+                    if (logs.length > 0) {
+                        document.getElementById('metrics-avg-ai').textContent = Math.round(totalAi / logs.length) + 'ms';
+                        document.getElementById('metrics-total-cost').textContent = '$' + totalCost.toFixed(4);
+                        document.getElementById('metrics-cache-saved').textContent = cacheHits;
+                    }
+                    
+                    const tbody = document.getElementById('metrics-logs-body');
+                    const itemsPerPage = 10;
+                    let currentPage = 1;
+                    let filteredLogs = logs;
+                    
+                    const searchInput = document.getElementById('metrics-search-input');
+                    if (searchInput) {
+                        searchInput.value = ''; // Reset on open
+                        searchInput.addEventListener('input', (e) => {
+                            const term = e.target.value.toLowerCase();
+                            filteredLogs = logs.filter(l => 
+                                (l.user_query && l.user_query.toLowerCase().includes(term)) ||
+                                (l.sql_query && l.sql_query.toLowerCase().includes(term)) ||
+                                (l.database && l.database.toLowerCase().includes(term)) ||
+                                (l.source && l.source.toLowerCase().includes(term))
+                            );
+                            currentPage = 1;
+                            renderTable(currentPage);
+                        });
+                    }
+                    
+                    function renderTable(page) {
+                        tbody.innerHTML = '';
+                        const start = (page - 1) * itemsPerPage;
+                        const end = start + itemsPerPage;
+                        const paginatedLogs = filteredLogs.slice(start, end);
+                        
+                        paginatedLogs.forEach((log, index) => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${start + index + 1}</td>
+                                <td>${new Date(log.timestamp).toLocaleString()}</td>
+                                <td>${log.database}</td>
+                                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${log.user_query}">${log.user_query}</td>
+                                <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace;" title="${log.sql_query}">${log.sql_query}</td>
+                                <td style="font-weight: bold; color: ${log.source === 'CACHE' ? '#10b981' : '#a5b4fc'}">${log.source || 'LLM'}</td>
+                                <td>$${(log.cost || 0).toFixed(4)}</td>
+                                <td>${(log.prompt_tokens || 0) + (log.completion_tokens || 0)}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                        
+                        document.getElementById('metrics-page-indicator').textContent = `Page ${page} of ${Math.ceil(filteredLogs.length / itemsPerPage) || 1}`;
+                        document.getElementById('metrics-prev-btn').disabled = page === 1;
+                        document.getElementById('metrics-next-btn').disabled = end >= filteredLogs.length;
+                    }
+                    
+                    document.getElementById('metrics-prev-btn').onclick = () => { if (currentPage > 1) renderTable(--currentPage); };
+                    document.getElementById('metrics-next-btn').onclick = () => { if ((currentPage * itemsPerPage) < filteredLogs.length) renderTable(++currentPage); };
+                    
+                    renderTable(currentPage);
+                }
+            } catch (e) {
+                console.error("Failed to load metrics", e);
+            }
+        });
+    }
 });

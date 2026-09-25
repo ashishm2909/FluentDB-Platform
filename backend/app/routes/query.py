@@ -43,6 +43,9 @@ def generate_sql_endpoint():
         api_key = data.get('api_key')
         sql_query, ai_metrics = generate_sql(schema_context, natural_language_query, history, api_key)
         
+        if sql_query.startswith("ERROR:"):
+            return jsonify({"error": sql_query.replace("ERROR:", "").strip()}), 400
+        
         complexity = "Low"
         if "JOIN" in sql_query.upper(): complexity = "Medium"
         if "WITH" in sql_query.upper() or sql_query.upper().count("SELECT") > 1: complexity = "High"

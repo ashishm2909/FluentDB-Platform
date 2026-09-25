@@ -30,6 +30,7 @@ def generate_sql(schema_context, natural_language_query, history=None, api_key=N
     1. ONLY return the SQL query. No markdown, no explanation.
     2. TEXT SEARCHES: Use case-insensitive partial matching (LOWER(col) LIKE '%val%').
     3. Use JOINs/COALESCE where needed. Map missing columns intelligently.
+    4. STRICT SCHEMA ADHERENCE: If the user asks for a table or data that clearly DOES NOT exist in the provided schema, DO NOT guess or substitute a random table. You MUST return exactly this string: "ERROR: Table or data not found in schema."
     {history_text}
 
     Schema:
