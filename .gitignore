@@ -22,6 +22,8 @@ backend/query_logs.db
 
 # Private files
 INTERVIEW_PREP.md
+AWS_DEPLOYMENT.md
+FluentDB_AWS_Key.pem
 
 # IDEs
 .vscode/
