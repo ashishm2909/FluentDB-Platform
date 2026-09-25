@@ -1,10 +1,50 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const API_BASE = 'http://localhost:5001/api';
+    const API_BASE = 'http://localhost:5002/api';
     let chatHistory = [];
     let currentChart = null;
     let currentCsvData = null;
+    let currentRenderedRowCount = 0;
+    let totalRowsToRender = [];
+    let currentColumns = [];
 
     // UI Elements
+    const sidebar = document.querySelector('.sidebar');
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sidebar.classList.toggle('collapsed');
+        });
+        
+        // Expand sidebar if clicked anywhere while collapsed
+        sidebar.addEventListener('click', (e) => {
+            if (sidebar.classList.contains('collapsed')) {
+                sidebar.classList.remove('collapsed');
+                e.preventDefault(); // Prevent accidental clicks on inner elements like links when expanding
+            }
+        });
+    }
+
+    const apiKeyInput = document.getElementById('api-key-input');
+    const saveApiKeyBtn = document.getElementById('save-api-key-btn');
+    
+    // Load API key from local storage if exists
+    const storedApiKey = localStorage.getItem('groqApiKey');
+    if (storedApiKey) {
+        apiKeyInput.value = storedApiKey;
+    }
+    
+    saveApiKeyBtn.addEventListener('click', () => {
+        const key = apiKeyInput.value.trim();
+        if (key) {
+            localStorage.setItem('groqApiKey', key);
+            alert('API Key saved successfully!');
+        } else {
+            localStorage.removeItem('groqApiKey');
+            alert('API Key removed.');
+        }
+    });
+
     const dbFileInput = document.getElementById('db-file');
     const uploadBtn = document.getElementById('upload-btn');
     const uploadStatus = document.getElementById('upload-status');
@@ -30,29 +70,72 @@ document.addEventListener('DOMContentLoaded', () => {
     
     refreshDbsBtn.addEventListener('click', fetchDatabases);
     
-    deleteDbBtn.addEventListener('click', async () => {
-        const dbToDelete = dbSelect.value;
+    const customModal = document.getElementById('custom-modal');
+    const modalCancelBtn = document.getElementById('modal-cancel-btn');
+    const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+    let dbToDelete = null;
+
+    deleteDbBtn.addEventListener('click', () => {
+        dbToDelete = dbSelect.value;
         if (!dbToDelete) return alert("No database selected to delete.");
+        customModal.classList.remove('hidden');
+    });
+
+    modalCancelBtn.addEventListener('click', () => {
+        customModal.classList.add('hidden');
+        dbToDelete = null;
+    });
+
+    modalConfirmBtn.addEventListener('click', async () => {
+        customModal.classList.add('hidden');
+        if (!dbToDelete) return;
         
-        if (confirm(`Are you sure you want to completely delete ${dbToDelete}? This action cannot be undone.`)) {
-            try {
-                const res = await fetch(`${API_BASE}/database/${dbToDelete}`, { method: 'DELETE' });
-                const data = await res.json();
-                if (res.ok) {
-                    alert(data.message);
-                    fetchDatabases();
-                } else {
-                    alert(data.error);
-                }
-            } catch (e) {
-                alert("Failed to delete database.");
+        try {
+            const res = await fetch(`${API_BASE}/database/${dbToDelete}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.message);
+                fetchDatabases();
+            } else {
+                alert(data.error);
             }
+        } catch (e) {
+            alert("Failed to delete database.");
         }
+        dbToDelete = null;
     });
     // Removed duplicate UI variables
 
     dbFileInput.addEventListener('change', (e) => { 
         document.getElementById('selected-filename').textContent = e.target.files[0]?.name || 'No file selected'; 
+    });
+
+    // Drag and Drop Logic
+    const dropZone = document.getElementById('drop-zone');
+    
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+    });
+    
+    dropZone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (files && files.length > 0) {
+            dbFileInput.files = files;
+            document.getElementById('selected-filename').textContent = files[0].name;
+        }
     });
 
     uploadBtn.addEventListener('click', () => {
@@ -140,10 +223,11 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // STEP 1: Generate SQL
             let sqlQuery, aiMetrics, complexity;
+            const currentApiKey = localStorage.getItem('groqApiKey') || '';
             const genRes = await fetch(`${API_BASE}/generate_sql`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ database: selectedDb, query, history: chatHistory })
+                body: JSON.stringify({ database: selectedDb, query, history: chatHistory, api_key: currentApiKey })
             });
             const genData = await genRes.json();
             if (!genRes.ok) throw new Error(genData.error);
@@ -196,10 +280,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const errorMsg = execData.error || execData.result.error;
                 console.log("SQL Failed. Attempting Auto-Heal...", errorMsg);
                 
+                const currentApiKey = localStorage.getItem('groqApiKey') || '';
                 const healRes = await fetch(`${API_BASE}/heal_sql`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ database: selectedDb, query, wrong_sql: sqlQuery, error_msg: errorMsg })
+                    body: JSON.stringify({ database: selectedDb, query, wrong_sql: sqlQuery, error_msg: errorMsg, api_key: currentApiKey })
                 });
                 const healData = await healRes.json();
                 if (!healRes.ok) throw new Error("Auto-Heal Failed: " + healData.error);
@@ -247,6 +332,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             document.getElementById('metrics-dashboard').classList.remove('hidden');
             
+            const finalStatus = (execData && execData.result && !execData.result.error) ? 'SUCCESS' : 'ERROR';
+            
             // Log Query silently
             fetch(`${API_BASE}/log_query`, {
                 method: 'POST',
@@ -255,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     database: selectedDb, user_query: query, sql_query: sqlQuery,
                     ai_latency: aiMetrics.inference_latency_ms, db_latency: execData.result.exec_time_ms,
                     prompt_tokens: aiMetrics.prompt_tokens, completion_tokens: aiMetrics.completion_tokens,
-                    complexity: complexity, status: 'SUCCESS', source: source, cost: cost
+                    complexity: complexity, status: finalStatus, source: source, cost: cost
                 })
             }).catch(e => console.error("Logging failed", e));
 
@@ -271,16 +358,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isNum0 = typeof execData.result.rows[0][0] === 'number';
                 const isNum1 = typeof execData.result.rows[0][1] === 'number';
                 if ((isNum0 && !isNum1) || (!isNum0 && isNum1)) {
-                    renderChart(execData.result.columns, execData.result.rows, isNum1 ? 0 : 1, isNum1 ? 1 : 0);
+                    const chartRows = execData.result.rows.slice(0, 50);
+                    renderChart(execData.result.columns, chartRows, isNum1 ? 0 : 1, isNum1 ? 1 : 0);
                 }
             }
 
             // Natural Language Insights
             if (execData.op_type === 'SELECT' && execData.result.rows.length > 0) {
+                const currentApiKey = localStorage.getItem('groqApiKey') || '';
                 fetch(`${API_BASE}/insights`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query, data: { cols: execData.result.columns, rows: execData.result.rows.slice(0, 10) } })
+                    body: JSON.stringify({ query, data: { cols: execData.result.columns, rows: execData.result.rows.slice(0, 10) }, api_key: currentApiKey })
                 }).then(r => r.json()).then(d => {
                     if (d.insight) {
                         insightText.textContent = d.insight;
@@ -304,6 +393,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderTable(columns, rows, opType) {
         tableHead.innerHTML = ''; tableBody.innerHTML = '';
+        currentRenderedRowCount = 0;
+        
         if (opType !== 'SELECT') {
             tableBody.innerHTML = `<tr><td colspan="100%" style="color: var(--success);">Success: Operation '${opType}' completed on the database.</td></tr>`;
             return;
@@ -318,12 +409,57 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         tableHead.appendChild(headerRow);
 
-        rows.forEach(row => {
+        currentColumns = columns;
+        totalRowsToRender = rows;
+        
+        renderMoreRows(100);
+    }
+
+    function renderMoreRows(count) {
+        if (currentRenderedRowCount >= totalRowsToRender.length) return;
+        
+        const endIdx = Math.min(currentRenderedRowCount + count, totalRowsToRender.length);
+        const rowsToRender = totalRowsToRender.slice(currentRenderedRowCount, endIdx);
+        
+        const lastRow = tableBody.lastElementChild;
+        if (lastRow && lastRow.classList.contains('status-row')) {
+            tableBody.removeChild(lastRow);
+        }
+        
+        rowsToRender.forEach(row => {
             const tr = document.createElement('tr');
             row.forEach(cellValue => {
-                const td = document.createElement('td'); td.textContent = cellValue !== null ? cellValue : 'NULL'; tr.appendChild(td);
+                const td = document.createElement('td'); 
+                td.textContent = cellValue !== null ? cellValue : 'NULL'; 
+                tr.appendChild(td);
             });
             tableBody.appendChild(tr);
+        });
+        
+        currentRenderedRowCount = endIdx;
+        
+        if (currentRenderedRowCount < totalRowsToRender.length) {
+            const tr = document.createElement('tr');
+            tr.className = 'status-row';
+            const td = document.createElement('td');
+            td.colSpan = currentColumns.length;
+            td.style.textAlign = 'center';
+            td.style.color = 'var(--text-secondary)';
+            td.style.padding = '1rem';
+            td.textContent = `Showing ${currentRenderedRowCount} of ${totalRowsToRender.length} rows. Scroll down to load more...`;
+            tr.appendChild(td);
+            tableBody.appendChild(tr);
+        }
+    }
+
+    const tableContainer = document.querySelector('.table-container');
+    if (tableContainer) {
+        tableContainer.addEventListener('scroll', () => {
+            if (tableContainer.scrollTop + tableContainer.clientHeight >= tableContainer.scrollHeight - 50) {
+                if (currentRenderedRowCount < totalRowsToRender.length) {
+                    renderMoreRows(50);
+                }
+            }
         });
     }
 

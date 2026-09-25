@@ -34,6 +34,25 @@ def extract_schema(filename):
     conn.close()
     return "\n".join(schema)
 
+def check_table_in_other_dbs(table_name, current_db):
+    suggestions = []
+    upload_dir = os.path.dirname(get_db_path(current_db))
+    if not os.path.exists(upload_dir):
+        return suggestions
+        
+    for f in os.listdir(upload_dir):
+        if f.endswith(('.db', '.sqlite', '.sqlite3')) and f != current_db:
+            try:
+                conn = sqlite3.connect(get_db_path(f))
+                cursor = conn.cursor()
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?;", (table_name,))
+                if cursor.fetchone():
+                    suggestions.append(f)
+                conn.close()
+            except:
+                pass
+    return suggestions
+
 def execute_query(filename, query):
     """Executes a SQL query on the specified database."""
     import time
@@ -53,6 +72,18 @@ def execute_query(filename, query):
         return {"columns": columns, "rows": results, "error": None, "exec_time_ms": exec_time}
     except Exception as e:
         exec_time = round((time.time() - start_time) * 1000, 2)
-        return {"columns": [], "rows": [], "error": str(e), "exec_time_ms": exec_time}
+        error_msg = str(e)
+        
+        # Check if error is related to missing table
+        if "no such table" in error_msg.lower():
+            try:
+                missing_table = error_msg.split(":")[-1].strip()
+                suggestions = check_table_in_other_dbs(missing_table, filename)
+                if suggestions:
+                    error_msg += f" \n\n💡 Suggestion: The table '{missing_table}' does not exist in '{filename}'. However, it was found in these other databases: {', '.join(suggestions)}. Please select the correct database from the sidebar."
+            except Exception:
+                pass
+                
+        return {"columns": [], "rows": [], "error": error_msg, "exec_time_ms": exec_time}
     finally:
         conn.close()

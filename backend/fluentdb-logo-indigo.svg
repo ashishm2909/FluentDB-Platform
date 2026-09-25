@@ -1,0 +1,36 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="fluentAiGrad" x1="30" y1="20" x2="170" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="50%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#C084FC"/>
+    </linearGradient>
+    <linearGradient id="fluentDbGrad" x1="60" y1="100" x2="140" y2="170" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#4338CA" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#6366F1" stop-opacity="0.4"/>
+    </linearGradient>
+    <filter id="fluentGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  <style>
+    @keyframes pulseSparkle { 0%, 100% { transform: scale(0.85) rotate(0deg); opacity: 0.75; } 50% { transform: scale(1.3) rotate(45deg); opacity: 1; } }
+    @keyframes waveDraw { 0% { stroke-dashoffset: 75; opacity: 0.3; } 50% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: -75; opacity: 0.3; } }
+    @keyframes floatDisk { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-4px); } }
+    .sparkle { transform-origin: 146px 44px; animation: pulseSparkle 2.2s ease-in-out infinite; }
+    .wave { stroke-dasharray: 75; animation: waveDraw 2.8s ease-in-out infinite; }
+    .disk { animation: floatDisk 2.4s ease-in-out infinite; }
+  </style>
+  <circle cx="100" cy="105" r="68" fill="rgba(99, 102, 241, 0.4)" opacity="0.3" filter="url(#fluentGlow)" />
+  <path d="M48 42C48 31.5 56.5 23 67 23H133C143.5 23 152 31.5 152 42V75C152 85.5 143.5 94 133 94H94L70 110V94H67C56.5 94 48 85.5 48 75V42Z" 
+        stroke="url(#fluentAiGrad)" stroke-width="3.6" fill="rgba(15,23,42,0.7)"/>
+  <path class="wave" d="M70 58 C78 48 86 68 96 58 C106 48 114 68 124 58 C128 54 131 56 132 58" 
+        stroke="url(#fluentAiGrad)" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+  <g class="disk"><ellipse cx="100" cy="120" rx="46" ry="12" fill="url(#fluentDbGrad)" stroke="#38BDF8" stroke-width="2.2"/></g>
+  <path d="M54 133 C54 142 146 142 146 133 V144 C146 153 54 153 54 144 Z" fill="url(#fluentDbGrad)" stroke="#6366F1" stroke-width="2.2"/>
+  <path d="M54 154 C54 163 146 163 146 154 V165 C146 174 54 174 54 165 Z" fill="url(#fluentDbGrad)" stroke="#6366F1" stroke-width="2.2"/>
+  <g class="sparkle" filter="url(#fluentGlow)">
+    <path d="M146 32 C146 40 150 44 158 44 C150 44 146 48 146 56 C146 48 142 44 134 44 C142 44 146 40 146 32 Z" fill="#38BDF8"/>
+  </g>
+</svg>

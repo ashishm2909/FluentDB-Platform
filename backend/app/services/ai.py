@@ -3,10 +3,20 @@ from app.config import Config
 import time
 import json
 
-client = Groq(api_key=Config.GROQ_API_KEY) if Config.GROQ_API_KEY else None
+_client_cache = {}
 
-def generate_sql(schema_context, natural_language_query, history=None):
-    if not client: raise Exception("Groq API Key not configured.")
+def get_client(api_key=None):
+    key = api_key or Config.GROQ_API_KEY
+    if not key:
+        raise Exception("Groq API Key not configured. Please provide one in the UI.")
+    
+    if key not in _client_cache:
+        _client_cache[key] = Groq(api_key=key)
+    
+    return _client_cache[key]
+
+def generate_sql(schema_context, natural_language_query, history=None, api_key=None):
+    client = get_client(api_key)
     start_time = time.time()
     
     history_text = ""
@@ -43,7 +53,8 @@ def generate_sql(schema_context, natural_language_query, history=None):
         "completion_tokens": usage.completion_tokens if usage else 0
     }
 
-def heal_sql(schema_context, query, wrong_sql, error_msg):
+def heal_sql(schema_context, query, wrong_sql, error_msg, api_key=None):
+    client = get_client(api_key)
     start_time = time.time()
     prompt = f"""
     You are an expert SQL debugger. The following SQL query failed with an error. Fix it.
@@ -64,7 +75,8 @@ def heal_sql(schema_context, query, wrong_sql, error_msg):
     sql_query = completion.choices[0].message.content.strip().replace('```sql', '').replace('```', '').strip()
     return sql_query
 
-def generate_insights(query, data):
+def generate_insights(query, data, api_key=None):
+    client = get_client(api_key)
     prompt = f"""
     You are a data analyst presenting results to an executive. 
     User asked: "{query}"

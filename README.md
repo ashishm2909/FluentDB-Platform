@@ -4,13 +4,15 @@ A production-grade, agentic AI platform that allows users to query databases usi
 
 ## Key Features
 * **Conversational AI Querying:** Translates natural language into accurate SQL queries.
-* **Intelligent Caching:** Bypasses LLM API calls for identical past queries, reducing cost and latency to zero.
-* **Auto-Healing SQL:** If a generated query fails execution (e.g. invalid column name), the agent automatically parses the SQLite error and rewrites the query to fix it, totally transparently to the user.
+* **Intelligent Caching & Interception:** Bypasses LLM API calls for identical past queries and basic introspection queries (like "show db"), reducing cost and latency to zero.
+* **Auto-Healing & Cross-DB Suggestions:** If a generated query fails execution (e.g., invalid column name), the agent rewrites the query. If a table is entirely missing, it intelligently scans other uploaded databases and suggests the correct one.
 * **Contextual Memory:** Remembers the past 5 interactions to handle conversational follow-up questions seamlessly.
 * **Data Visualization & Insights:** Automatically generates Chart.js bar charts for aggregate data and uses the LLM to output an executive summary of the queried dataset.
+* **Performance-Optimized Rendering:** Employs infinite scrolling for massive datasets and limits chart data points to prevent browser freezing.
 * **Advanced Metrics Dashboard:** Real-time tracking of AI inference latency, database execution latency, token usage, query complexity, and API cost-savings.
-* **Secure Database Management:** Upload, inspect, and delete local `.db` SQLite files directly from the UI with a 200MB production-ready upload limit and real-time upload progress tracking.
-* **Glassmorphism UI:** State-of-the-art modern dashboard interface.
+* **Secure Database Management:** Drag-and-drop local `.db` SQLite files directly into the UI with a 200MB production-ready upload limit and real-time upload progress tracking.
+* **Flexible API Key Management:** Bring your own Groq API key directly via the UI (stored locally in the browser) or via a backend `.env` file.
+* **Glassmorphism UI:** State-of-the-art modern dashboard interface featuring a collapsible animated icon sidebar and smooth custom HTML modals.
 
 ## Tech Stack
 * **Frontend:** HTML5, CSS3 (Glassmorphism), Vanilla JavaScript, Chart.js
@@ -28,14 +30,14 @@ A production-grade, agentic AI platform that allows users to query databases usi
 4. Install dependencies: `pip install -r requirements.txt`
 5. Copy the example environment file and add your API key:
    - `cp .env.example .env`
-   - Edit `.env` and set `GROQ_API_KEY=your_key_here`
-6. Start the server: `python run.py` (Runs on port 5001)
+   - Edit `.env` and set `GROQ_API_KEY=your_key_here` (Optional if inputting via UI).
+6. Start the server: `python run.py` (Runs on port 5002)
 
 ### 2. Frontend Setup
 1. Open a new terminal in the `frontend` directory.
 2. Serve the static files using Python's built-in server:
-   - `python -m http.server 8000`
-3. Open your browser and navigate to `http://localhost:8000`
+   - `python3 -m http.server 8080`
+3. Open your browser and navigate to `http://localhost:8080`
 
 ## Architecture
 

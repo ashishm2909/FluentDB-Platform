@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    const API_BASE = 'http://localhost:5001/api';
+    const API_BASE = 'http://localhost:5002/api';
 
     try {
         const response = await fetch(`${API_BASE}/logs`);

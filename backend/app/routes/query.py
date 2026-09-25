@@ -16,6 +16,17 @@ def generate_sql_endpoint():
         return jsonify({"error": "Missing database or query."}), 400
 
     try:
+        # Intercept schema queries to avoid LLM hallucinations and save time
+        query_lower = natural_language_query.lower().strip()
+        if query_lower in ["show db", "show tables", "list tables", "what tables are there", "tables"]:
+            return jsonify({
+                "database": database_name,
+                "sql_query": "SELECT name as table_name FROM sqlite_master WHERE type='table';",
+                "ai_metrics": {"inference_latency_ms": 0, "prompt_tokens": 0, "completion_tokens": 0},
+                "complexity": "Low",
+                "source": "SYSTEM"
+            })
+
         # Check cache first
         cached = get_cached_sql(database_name, natural_language_query)
         if cached:
@@ -29,7 +40,8 @@ def generate_sql_endpoint():
 
         # Not in cache, call LLM
         schema_context = extract_schema(database_name)
-        sql_query, ai_metrics = generate_sql(schema_context, natural_language_query, history)
+        api_key = data.get('api_key')
+        sql_query, ai_metrics = generate_sql(schema_context, natural_language_query, history, api_key)
         
         complexity = "Low"
         if "JOIN" in sql_query.upper(): complexity = "Medium"
@@ -55,7 +67,8 @@ def heal_sql_endpoint():
     
     try:
         schema_context = extract_schema(database_name)
-        fixed_sql = heal_sql(schema_context, original_query, wrong_sql, error_msg)
+        api_key = data.get('api_key')
+        fixed_sql = heal_sql(schema_context, original_query, wrong_sql, error_msg, api_key)
         return jsonify({"fixed_sql": fixed_sql})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -90,7 +103,7 @@ def execute_sql_endpoint():
 def insights_endpoint():
     data = request.json
     try:
-        insight = generate_insights(data.get('query'), data.get('data'))
+        insight = generate_insights(data.get('query'), data.get('data'), data.get('api_key'))
         return jsonify({"insight": insight})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
