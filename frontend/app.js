@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const API_BASE = 'http://localhost:5002/api';
+    const API_BASE = '/api';
     let chatHistory = [];
     let currentChart = null;
     let currentCsvData = null;
