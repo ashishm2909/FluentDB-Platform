@@ -28,3 +28,7 @@ FluentDB_AWS_Key.pem
 # IDEs
 .vscode/
 .idea/
+
+
+#HOSTED IP AWS
+http://13.222.17.158/
