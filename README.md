@@ -2,6 +2,8 @@
 
 A production-grade, agentic AI platform that allows users to query databases using natural language. Built with a Flask (Python) backend and a vanilla JavaScript frontend, this platform leverages LLMs to instantly translate conversational English into complex SQL queries, execute them securely, and visualize the results.
 
+LIVE Preview - http://fluentdb.duckdns.org/
+
 ## Key Features
 * **Conversational AI Querying:** Translates natural language into accurate SQL queries.
 * **Intelligent Caching & Interception:** Bypasses LLM API calls for identical past queries and basic introspection queries (like "show db"), reducing cost and latency to zero.
